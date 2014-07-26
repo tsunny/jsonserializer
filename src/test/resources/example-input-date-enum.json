@@ -1,0 +1,69 @@
+[
+  {
+    "id": 1231243213243432432,
+    "type": "ONE",
+    "restartDate": "1406353114000",
+    "guid": "b146862e-db57-4704-ae29-e0c4e3a307af",
+    "isActive": true,
+    "balance": "$2,020.52",
+    "picture": "http://placehold.it/32x32",
+    "age": 21,
+    "eyeColor": "blue",
+    "name": "May Edwards",
+    "gender": "male",
+    "company": "COMVENE",
+    "email": "mayedwards@comvene.com",
+    "phone": "+1 (856) 572-2714",
+    "address": "909 Allen Avenue, Carbonville, Montana, 5211",
+    "about": "Sit ea culpa consequat exercitation consequat. Labore duis irure magna fugiat esse dolor enim aliquip deserunt et velit anim. Irure duis eu deserunt nostrud amet pariatur non in proident anim nisi ut deserunt et. In sunt tempor eu irure sunt ipsum cillum incididunt nulla. Ea id ipsum irure non in eiusmod consectetur consectetur magna excepteur.\r\n",
+    "registered": "2014-02-21T19:46:59 -06:-30",
+    "latitude": 49.935151,
+    "longitude": 31.546576,
+    "tags": [
+      "nostrud",
+      "dolor",
+      "culpa",
+      "ex",
+      "elit",
+      "nostrud",
+      "fugiat"
+    ],
+    "friends": [
+      {
+        "id": 0,
+        "name": "Phyllis Rosario",
+        "friends": [
+          {
+            "id": 0,
+            "name": "Kline Moon",
+            "friends": []
+          }
+        ]
+      },
+      {
+        "id": 1,
+        "name": "Johnston Wolfe",
+        "friends": [
+          {
+            "id": 0,
+            "name": "Puckett Frost",
+            "friends": []
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "name": "Maude Vinson",
+        "friends": [
+          {
+            "id": 0,
+            "name": "Rich Christensen",
+            "friends": []
+          }
+        ]
+      }
+    ],
+    "greeting": "Hello, May Edwards! You have 6 unread messages.",
+    "favoriteFruit": "apple"
+  }
+]

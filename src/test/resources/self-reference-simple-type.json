@@ -1,0 +1,12 @@
+{
+    "name": "Level1",
+    "self": {
+        "name": "Level2",
+        "self": {
+            "name": "Level3",
+            "self": {
+                "name": "Level4"
+            }
+        }
+    }
+}

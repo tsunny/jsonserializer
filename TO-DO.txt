@@ -1,0 +1,13 @@
+Add Support for
+	* all basic JavaTypes
+	* Enums
+	* Date - Jackson
+	* Arrays
+	* List and Set
+	* For now use jackson for serializing map -- hope there would be no circular references
+	* Support Array of Arrays? (Kill me!)
+
+
+
+
+Test with large data set
