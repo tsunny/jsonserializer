@@ -21,6 +21,8 @@ public class JSONSerializer {
 	private static final Logger logger = LoggerFactory
 			.getLogger(JSONSerializer.class);
 
+	public boolean USE_METHOD = true;
+
 	private JSONWriter jsonWriter = null;
 
 	private HashSet<Object> vistedObjects = null;
@@ -41,10 +43,14 @@ public class JSONSerializer {
 
 		try {
 
-			// serializeUsingMethodBasedReflection(value, new HashSet<Object>(),
-			// depth);
+			if (USE_METHOD) {
 
-			serializeUsingFieldBasedReflection(value, depth);
+				serializeUsingMethodBasedReflection(value, depth);
+
+			} else {
+
+				serializeUsingFieldBasedReflection(value, depth);
+			}
 
 			w.write(jsonWriter.getBuffer().toString());
 
@@ -66,7 +72,7 @@ public class JSONSerializer {
 	 * @param depth
 	 */
 	private void serializeUsingMethodBasedReflection(Object rootObject,
-			HashSet<Object> vistedObjects, int depth) {
+			int depth) {
 
 		if (rootObject == null) {
 			return;
@@ -76,19 +82,37 @@ public class JSONSerializer {
 
 		logger.debug("Serializing at depth : " + depth);
 
-		final Method[] methods = rootObject.getClass().getMethods();
+		if (rootObject.getClass().isArray()) {
+
+			serializeArray(rootObject);
+			return;
+
+		} else if (ReflectionUtils.isCollection(rootObject.getClass())) {
+
+			serializeCollection(rootObject);
+			return;
+		}
+
+		else if (ReflectionUtils.isMap(rootObject.getClass())) {
+
+			serializeMap(rootObject);
+			return;
+		}
 
 		jsonWriter.writeBeginObject();
+
+		final Method[] methods = rootObject.getClass().getDeclaredMethods();
+		boolean isFirstComma = true;
 
 		for (int i = 0; i < methods.length; i++) {
 
 			Method method = methods[i];
+			String fieldName = method.getName();
 
-			logger.debug("Current Method : " + method.getName());
+			logger.debug("Current Method : " + fieldName);
 
-			if (ReflectionUtils.isCollection(method.getReturnType())) {
-				logger.debug("Skipping Collection : " + method);
-				continue;
+			if (!method.isAccessible()) {
+				method.setAccessible(true);
 			}
 
 			if (ReflectionUtils.isSkipped(method)) {
@@ -96,72 +120,83 @@ public class JSONSerializer {
 				continue;
 			}
 
-			if (ReflectionUtils.isSetter(method)) {
-				logger.debug("Skipping setter method : " + method.getName());
+			if (ReflectionUtils.isSetMethod(method)) {
+				logger.debug("Skipping set method : " + method.getName());
 				continue;
 			}
 
-			if (ReflectionUtils.isGetter(method)) {
+			try {
 
-				try {
+				if (ReflectionUtils.isGetMethod(method)) {
 
-					logger.debug("Adding to visited objects : "
-							+ method.getName());
+					fieldName = ReflectionUtils.getFieldName(method);
+
+				} else if (ReflectionUtils.isBooleanMethod(method)) {
+
+					fieldName = ReflectionUtils.getBooleanFieldName(method);
+				}
+
+				logger.debug("Adding to visited fields : " + fieldName);
+
+				Object value = method.invoke(rootObject);
+
+				if (!isFirstComma) {
+					jsonWriter.writeComma();
+				}
+				isFirstComma = false;
+
+				jsonWriter.writeField(fieldName);
+
+				if (value == null) {
+					jsonWriter.writeNull();
+					continue;
+				}
+
+				Class<? extends Object> typeOfValue = value.getClass();
+
+				if (ReflectionUtils.isCollection(typeOfValue)) {
+
+					serializeCollection(value);
+
+				} else if (typeOfValue.isArray()) {
+
+					serializeArray(value);
+
+				} else if (ReflectionUtils.hasEnumConstants(typeOfValue)) {
+
+					logger.debug("Serializing a EnumType : " + typeOfValue);
+					jsonWriter.writeValue(value, Enum.class);
+
+				}
+
+				else if (ReflectionUtils.isJavaType(typeOfValue)) {
+
+					logger.debug("Serializing a JavaType : " + typeOfValue);
+					jsonWriter.writeValue(value, typeOfValue);
+
+				} else {
+
+					logger.debug("Serializing a CustomType : " + typeOfValue);
 
 					// --- add it to the visited set
 					vistedObjects.add(rootObject);
 
-					Class<? extends Object> typeOfValue = method
-							.getReturnType();
-
-					Object value = method.invoke(rootObject);
-
-					String fieldName = ReflectionUtils.getFieldName(method);
-					jsonWriter.writeField(fieldName);
-
-					// --- check if it is a field or object
-					if (ReflectionUtils.isJavaType(typeOfValue)) {
-
-						logger.debug("Serializing a JavaType : " + typeOfValue);
-
-						jsonWriter.writeValue(value, typeOfValue);
-
-					} else {
-
-						logger.debug("Serializing a CustomType : "
-								+ typeOfValue);
-
-						// --- custom type ... lets take the leap of
-						// faith
-						if (value != null && (!vistedObjects.contains(value))) {
-
-							if (typeOfValue.isArray()) {
-
-								serializeArray(value);
-
-							} else {
-
-								serializeUsingMethodBasedReflection(value,
-										vistedObjects, depth);
-							}
-
-						} else {
-
-							jsonWriter.writeNull();
-						}
+					// --- custom type ... lets take the leap of
+					// faith
+					if (!vistedObjects.contains(value)) {
+						serializeUsingMethodBasedReflection(value, depth);
 					}
-
-				} catch (IllegalAccessException e) {
-					logger.error("Error during serialization " + e);
-				} catch (IllegalArgumentException e) {
-					logger.error("Error during serialization " + e);
-				} catch (InvocationTargetException e) {
-					logger.error("Error during serialization " + e);
 				}
 
-			} // --- End of processing get method
+			} catch (IllegalAccessException e) {
+				logger.error("Error during serialization " + e);
+			} catch (IllegalArgumentException e) {
+				logger.error("Error during serialization " + e);
+			} catch (InvocationTargetException e) {
+				logger.error("Error during serialization " + e);
+			}
 
-		} // --- End of processing all methods at this level
+		} // --- End of processing all fields at this level
 
 		jsonWriter.writeEndObject();
 
@@ -177,7 +212,7 @@ public class JSONSerializer {
 	 */
 	private void serializeUsingFieldBasedReflection(Object rootObject, int depth) {
 
-		if (rootObject == null) {
+		if (rootObject == null || vistedObjects.contains(rootObject)) {
 			return;
 		}
 
@@ -265,11 +300,8 @@ public class JSONSerializer {
 
 					logger.debug("Serializing a CustomType : " + typeOfValue);
 
-					// --- custom type ... lets take the leap of
-					// faith
-					if (!vistedObjects.contains(value)) {
-						serializeUsingFieldBasedReflection(value, depth);
-					}
+					// --- custom type
+					serializeUsingFieldBasedReflection(value, depth);
 				}
 
 			} catch (IllegalAccessException e) {
@@ -319,7 +351,12 @@ public class JSONSerializer {
 
 			} else {
 
-				serializeUsingFieldBasedReflection(aObj, 0);
+				if (USE_METHOD) {
+					serializeUsingMethodBasedReflection(aObj, 0);
+
+				} else {
+					serializeUsingFieldBasedReflection(aObj, 0);
+				}
 			}
 		}
 
@@ -357,7 +394,12 @@ public class JSONSerializer {
 
 			} else {
 
-				serializeUsingFieldBasedReflection(object, 0);
+				if (USE_METHOD) {
+					serializeUsingMethodBasedReflection(object, 0);
+
+				} else {
+					serializeUsingFieldBasedReflection(object, 0);
+				}
 			}
 
 			i++;
@@ -400,6 +442,11 @@ public class JSONSerializer {
 			String stringObj = (String) key;
 			jsonWriter.writeField(stringObj);
 
+			if (value == null) {
+				jsonWriter.writeNull();
+				continue;
+			}
+
 			Class typeOfValue = value.getClass();
 
 			if (ReflectionUtils.isJavaType(typeOfValue)) {
@@ -409,7 +456,12 @@ public class JSONSerializer {
 
 			} else {
 
-				serializeUsingFieldBasedReflection(value, 0);
+				if (USE_METHOD) {
+					serializeUsingMethodBasedReflection(value, 0);
+
+				} else {
+					serializeUsingFieldBasedReflection(value, 0);
+				}
 			}
 
 			i++;

@@ -2,16 +2,13 @@ package com.sunny.jsonserializer.util;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.AbstractCollection;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class ReflectionUtils {
 
@@ -69,28 +66,44 @@ public class ReflectionUtils {
 
 	public static boolean isSkipped(Method method) {
 
-		if (method.getName().equals("getClass")) {
+		if (method.getDeclaringClass() == Object.class) {
+			return true;
+		} else if (method.getName().equals("toString")) {
+			return true;
+		} else if (void.class.equals(method.getReturnType())
+				&& method.getParameterTypes().length == 0) {
+			return true;
+		} else if ((!method.getName().startsWith("set"))
+				&& method.getParameterTypes().length >= 1) {
 			return true;
 		}
 
 		return false;
 	}
 
-	public static boolean isGetter(Method method) {
+	public static boolean isGetMethod(Method method) {
 
-		if (!method.getName().startsWith("get")) {
-			return false;
+		if (method.getName().startsWith("get")
+				&& method.getParameterTypes().length == 0) {
+			return true;
 		}
-		if (method.getParameterTypes().length != 0) {
-			return false;
-		}
-		if (void.class.equals(method.getReturnType())) {
-			return false;
-		}
-		return true;
+
+		return false;
 	}
 
-	public static boolean isSetter(Method method) {
+	public static boolean isBooleanMethod(Method method) {
+
+		if (method.getName().startsWith("is")
+				&& method.getParameterTypes().length == 0
+				&& (Boolean.class.equals(method.getReturnType()) || boolean.class
+						.equals(method.getReturnType()))) {
+			return true;
+		}
+
+		return false;
+	}
+
+	public static boolean isSetMethod(Method method) {
 		if (!method.getName().startsWith("set")) {
 			return false;
 		}
@@ -112,6 +125,17 @@ public class ReflectionUtils {
 
 		fieldName = fieldName.replaceFirst(firstLetter,
 				firstLetter.toLowerCase());
+
+		return fieldName;
+	}
+
+	/**
+	 * @param method
+	 * @return
+	 */
+	public static String getBooleanFieldName(Method method) {
+
+		String fieldName = method.getName().substring(2);
 
 		return fieldName;
 	}

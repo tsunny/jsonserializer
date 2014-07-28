@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.sunny.jsonserializer.JSONSerializer;
-import com.sunny.jsonserializer.test.entity.DummyEnumType;
 import com.sunny.jsonserializer.test.entity.Example;
 import com.sunny.jsonserializer.test.entity.SelfReferenceEntity;
 import com.sunny.jsonserializer.test.utils.JSONParserTestUtils;
