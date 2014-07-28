@@ -179,7 +179,6 @@ public class ReflectionUtils {
 				fields.add(declaredFields[i]);
 			}
 
-			// --- goto the superclass
 			type = type.getSuperclass();
 
 		}
