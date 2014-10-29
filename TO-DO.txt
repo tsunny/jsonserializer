@@ -1,13 +1,12 @@
-Add Support for
+Currently suppports
 	* all basic JavaTypes
-	* Enums
-	* Date - Jackson
+	* Enums - In a crude way.
+	* Date - depends on Jackson
 	* Arrays
-	* List and Set
-	* For now use jackson for serializing map -- hope there would be no circular references
-	* Support Array of Arrays? (Kill me!)
+	* Collections
 
-
-
-
-Test with large data set
+Next feature to be implemented :
+	* Control the depth and level of serializaiton.
+	
+Enhancements:
+	* Re-factor the code.
