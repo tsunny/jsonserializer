@@ -6,7 +6,7 @@ Currently suppports
 	* Collections
 
 Next feature to be implemented :
-	* Control the depth and level of serializaiton.
+	* Control the depth and level of serialization.
 	
 Enhancements:
 	* Re-factor the code.
