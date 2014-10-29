@@ -9,4 +9,5 @@ Next feature to be implemented :
 	* Control the depth and level of serialization.
 	
 Enhancements:
+	* Better logging and exception handling.
 	* Re-factor the code.
