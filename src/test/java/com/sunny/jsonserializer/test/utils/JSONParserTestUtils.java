@@ -18,6 +18,7 @@ public class JSONParserTestUtils {
 		InputStream inputStream = Object.class.getResourceAsStream(fileName);
 
 		ObjectMapper mapper = new ObjectMapper();
+		
 		Object jsonObject = mapper.readValue(inputStream, jsonType);
 
 		inputStream.close();

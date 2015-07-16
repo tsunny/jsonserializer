@@ -66,7 +66,9 @@ public class ReflectionUtils {
 
 	public static boolean isSkipped(Method method) {
 
-		if (method.getDeclaringClass() == Object.class) {
+		if (method.getDeclaringClass() == Class.class) {
+			return true;
+		} else if (method.getDeclaringClass() == Object.class) {
 			return true;
 		} else if (method.getName().equals("toString")) {
 			return true;
@@ -75,6 +77,15 @@ public class ReflectionUtils {
 			return true;
 		} else if ((!method.getName().startsWith("set"))
 				&& method.getParameterTypes().length >= 1) {
+			return true;
+		} else if ((!method.getName().startsWith("get"))
+				&& (method.getParameterTypes().length == 0)
+				&& (!(boolean.class.equals(method.getReturnType()) || Boolean.class
+						.equals(method.getReturnType())))) {
+			return true;
+		}
+
+		else if (isSetMethod(method)) {
 			return true;
 		}
 

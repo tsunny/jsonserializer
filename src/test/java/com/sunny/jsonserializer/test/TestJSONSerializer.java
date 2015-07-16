@@ -121,6 +121,7 @@ public class TestJSONSerializer {
 	private String callSerialize(Object jsonObject, StringWriter sw) {
 
 		JSONSerializer js = new JSONSerializer();
+		js.SKIP_NULL_FIELDS = true;
 		js.serialize(sw, jsonObject);
 		String serializedJSON = sw.toString();
 		return serializedJSON;

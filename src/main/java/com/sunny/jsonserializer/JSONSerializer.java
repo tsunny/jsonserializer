@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,9 +24,11 @@ public class JSONSerializer {
 
 	public boolean USE_METHOD = true;
 
+	public boolean SKIP_NULL_FIELDS = false;
+
 	private JSONWriter jsonWriter = null;
 
-	private HashSet<Object> vistedObjects = null;
+	private Set<Object> vistedObjects = new HashSet<Object>();
 
 	public void serialize(Writer w, Object value) {
 
@@ -36,8 +39,6 @@ public class JSONSerializer {
 		}
 
 		int depth = 0;
-
-		vistedObjects = new HashSet<Object>();
 
 		jsonWriter = new JSONWriter();
 
@@ -56,10 +57,11 @@ public class JSONSerializer {
 
 		} catch (IOException e) {
 
-			logger.error("Error during serialization " + e);
+			logger.error("Error during serialization ", e);
+
 		} catch (Exception e) {
 
-			logger.error("Error during serialization " + e);
+			logger.error("Error during serialization ", e);
 			logger.error(jsonWriter.getBuffer().toString());
 		}
 
@@ -74,26 +76,44 @@ public class JSONSerializer {
 	private void serializeUsingMethodBasedReflection(Object rootObject,
 			int depth) {
 
-		if (rootObject == null) {
+		logger.debug("Begin serializeUsingMethodBasedReflection");
+
+		if (rootObject == null || vistedObjects.contains(rootObject)) {
+
+			if (rootObject == null) {
+
+				logger.debug("Input is null for serializeUsingMethodBasedReflection");
+
+			} else {
+
+				logger.debug("The object is already visited for serializeUsingMethodBasedReflection");
+			}
+
 			return;
 		}
 
 		depth++;
 
-		logger.debug("Serializing at depth : " + depth);
+		// --- add it to the visited set
+		vistedObjects.add(rootObject);
 
-		if (rootObject.getClass().isArray()) {
+		Class<? extends Object> currentClass = rootObject.getClass();
+
+		logger.debug("Serializing at depth : " + depth);
+		logger.debug("Serializing : " + currentClass);
+
+		if (currentClass.isArray()) {
 
 			serializeArray(rootObject);
 			return;
 
-		} else if (ReflectionUtils.isCollection(rootObject.getClass())) {
+		} else if (ReflectionUtils.isCollection(currentClass)) {
 
 			serializeCollection(rootObject);
 			return;
 		}
 
-		else if (ReflectionUtils.isMap(rootObject.getClass())) {
+		else if (ReflectionUtils.isMap(currentClass)) {
 
 			serializeMap(rootObject);
 			return;
@@ -101,7 +121,7 @@ public class JSONSerializer {
 
 		jsonWriter.writeBeginObject();
 
-		final Method[] methods = rootObject.getClass().getDeclaredMethods();
+		final Method[] methods = currentClass.getMethods();
 		boolean isFirstComma = true;
 
 		for (int i = 0; i < methods.length; i++) {
@@ -109,19 +129,12 @@ public class JSONSerializer {
 			Method method = methods[i];
 			String fieldName = method.getName();
 
-			logger.debug("Current Method : " + fieldName);
-
 			if (!method.isAccessible()) {
 				method.setAccessible(true);
 			}
 
 			if (ReflectionUtils.isSkipped(method)) {
 				logger.debug("Skipping method : " + method.getName());
-				continue;
-			}
-
-			if (ReflectionUtils.isSetMethod(method)) {
-				logger.debug("Skipping set method : " + method.getName());
 				continue;
 			}
 
@@ -134,20 +147,25 @@ public class JSONSerializer {
 				} else if (ReflectionUtils.isBooleanMethod(method)) {
 
 					fieldName = ReflectionUtils.getBooleanFieldName(method);
+
 				}
 
+				logger.debug("Current Method : " + fieldName);
 				logger.debug("Adding to visited fields : " + fieldName);
 
 				Object value = method.invoke(rootObject);
 
-				if (!isFirstComma) {
-					jsonWriter.writeComma();
-				}
-				isFirstComma = false;
-
-				jsonWriter.writeField(fieldName);
-
 				if (value == null) {
+
+					if (SKIP_NULL_FIELDS) {
+						continue;
+					}
+
+					if (!isFirstComma) {
+						jsonWriter.writeComma();
+					}
+					isFirstComma = false;
+					jsonWriter.writeField(fieldName);
 					jsonWriter.writeNull();
 					continue;
 				}
@@ -156,15 +174,33 @@ public class JSONSerializer {
 
 				if (ReflectionUtils.isCollection(typeOfValue)) {
 
+					if (!isFirstComma) {
+						jsonWriter.writeComma();
+					}
+					isFirstComma = false;
+
+					jsonWriter.writeField(fieldName);
 					serializeCollection(value);
 
 				} else if (typeOfValue.isArray()) {
 
+					if (!isFirstComma) {
+						jsonWriter.writeComma();
+					}
+					isFirstComma = false;
+
+					jsonWriter.writeField(fieldName);
 					serializeArray(value);
 
 				} else if (ReflectionUtils.hasEnumConstants(typeOfValue)) {
 
 					logger.debug("Serializing a EnumType : " + typeOfValue);
+
+					if (!isFirstComma) {
+						jsonWriter.writeComma();
+					}
+					isFirstComma = false;
+					jsonWriter.writeField(fieldName);
 					jsonWriter.writeValue(value, Enum.class);
 
 				}
@@ -172,28 +208,45 @@ public class JSONSerializer {
 				else if (ReflectionUtils.isJavaType(typeOfValue)) {
 
 					logger.debug("Serializing a JavaType : " + typeOfValue);
+
+					if (!isFirstComma) {
+						jsonWriter.writeComma();
+					}
+					isFirstComma = false;
+					jsonWriter.writeField(fieldName);
 					jsonWriter.writeValue(value, typeOfValue);
 
 				} else {
 
-					logger.debug("Serializing a CustomType : " + typeOfValue);
-
-					// --- add it to the visited set
-					vistedObjects.add(rootObject);
-
 					// --- custom type ... lets take the leap of
 					// faith
 					if (!vistedObjects.contains(value)) {
+
+						if (!isFirstComma) {
+							jsonWriter.writeComma();
+						}
+						isFirstComma = false;
+
+						logger.debug("Serializing a CustomType : "
+								+ typeOfValue);
+						jsonWriter.writeField(fieldName);
 						serializeUsingMethodBasedReflection(value, depth);
+
 					}
+
 				}
 
 			} catch (IllegalAccessException e) {
-				logger.error("Error during serialization " + e);
+
+				logger.error("Error during serialization ", e);
+
 			} catch (IllegalArgumentException e) {
-				logger.error("Error during serialization " + e);
+
+				logger.error("Error during serialization ", e);
+
 			} catch (InvocationTargetException e) {
-				logger.error("Error during serialization " + e);
+
+				logger.error("Error during serialization ", e);
 			}
 
 		} // --- End of processing all fields at this level
@@ -201,6 +254,9 @@ public class JSONSerializer {
 		jsonWriter.writeEndObject();
 
 		logger.debug("End of Serializing at depth : " + depth);
+		logger.debug("End Serializing : " + currentClass);
+
+		logger.debug("End serializeUsingMethodBasedReflection");
 
 	} // --- End serialize
 
@@ -305,9 +361,12 @@ public class JSONSerializer {
 				}
 
 			} catch (IllegalAccessException e) {
-				logger.error("Error during serialization " + e);
+
+				logger.error("Error during serialization ", e);
+
 			} catch (IllegalArgumentException e) {
-				logger.error("Error during serialization " + e);
+
+				logger.error("Error during serialization ", e);
 			}
 
 		} // --- End of processing all fields at this level
@@ -380,9 +439,17 @@ public class JSONSerializer {
 
 		int i = 0;
 
+		int size = collectionObj.size();
+
 		for (Object object : collectionObj) {
 
+			// if (i > 0 && i < size - 1) {
+			//
+			// jsonWriter.writeComma();
+			// }
+
 			if (i != 0) {
+
 				jsonWriter.writeComma();
 			}
 
